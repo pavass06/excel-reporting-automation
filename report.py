@@ -11,15 +11,33 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+from openpyxl import load_workbook
 
 from reporting.aggregates import by_region, kpis, monthly, top_clients, top_products
-from reporting.cleaning import clean, read_export
+from reporting.cleaning import COLUMNS, REPORT_REQUIRED, clean, read_export
 from reporting.excel_report import build_workbook
+
+
+def source_description(path) -> str:
+    """Description du fichier source (Fichier > Propriétés dans Excel), si elle existe.
+
+    L'export d'exemple y indique qu'il est fictif et quels défauts il contient.
+    """
+    try:
+        props = load_workbook(path, read_only=True).properties
+    except Exception:  # fichier non lisible par openpyxl : l'erreur viendra de read_export
+        return None
+    return (props.description or "").strip() or None
 
 
 def run(input_path, output_path, mois=None, top=10, sheet=0, company="Société exemple"):
     raw = read_export(input_path, sheet)
     df, quality = clean(raw)
+    missing = [c for c in REPORT_REQUIRED if c not in df]
+    if missing:
+        names = [COLUMNS[c][0] for c in missing]
+        raise ValueError(f"Colonnes obligatoires introuvables pour le reporting : {names}. "
+                         "Ajoutez l'intitulé correspondant dans COLUMNS (reporting/cleaning.py).")
     if df.empty:
         raise ValueError("Aucune ligne exploitable après nettoyage : vérifiez le fichier et l'onglet lu.")
     if mois:
@@ -27,7 +45,9 @@ def run(input_path, output_path, mois=None, top=10, sheet=0, company="Société 
         df = df[df["mois"] <= ref]
     k = kpis(df, mois)
     wb = build_workbook(df, quality, monthly(df), by_region(df), top_clients(df, top),
-                        top_products(df, top), k, Path(input_path).name, company)
+                        top_products(df, top), k, Path(input_path).name, company,
+                        source_note=source_description(input_path),
+                        sheet_label=f"« {sheet} »" if isinstance(sheet, str) else f"onglet n° {sheet + 1}")
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     wb.save(output_path)
     return df, quality, k

@@ -12,8 +12,31 @@ en une commande, sans retouche manuelle.
 
 ![Aperçu de l'onglet Synthèse](docs/img/apercu_synthese.png)
 
-*Aperçu reconstitué de l'onglet « Synthèse » (même calcul, rendu matplotlib). Le classeur réel est dans
-[`exemples/reporting_exemple.xlsx`](exemples/reporting_exemple.xlsx).*
+*Aperçu reconstitué de l'onglet « Synthèse » : mêmes chiffres, même palette, mais dessiné avec matplotlib par
+`make_screenshots.py`, pas une capture d'Excel (aucun moteur de rendu de tableur n'était disponible pour une
+capture automatique). Le classeur réel est dans [`exemples/reporting_exemple.xlsx`](exemples/reporting_exemple.xlsx).*
+
+## Données
+
+**Toutes les données de ce dépôt sont fictives.** Le fichier d'entrée `data/export_ventes_brut.xlsx` est
+généré par `generate_sample.py` avec la graine aléatoire `42` (`python generate_sample.py --seed 42`
+redonne exactement le même fichier) : 20 clients, 12 produits, 7 régions et 4 commerciaux inventés, ventes des
+jours ouvrés de janvier 2024 à septembre 2026, avec une légère croissance et une saisonnalité (creux en août).
+
+Pour montrer le nettoyage, le script **abîme volontairement** l'export, comme le font beaucoup de logiciels :
+
+| Défaut introduit | Proportion dans l'exemple |
+|---|---|
+| Dates sous 5 formats (vraie date Excel, `15/03/2025`, `2025-03-15`, `15-03-25`, `15.03.2025`) | environ 45 % des dates en texte |
+| Montants HT et TVA saisis en texte (`1 234,50 €`, `1234,50`) | environ 25 % des montants |
+| Libellés en MAJUSCULES ou minuscules, espaces en trop | environ 1 libellé sur 5 |
+| Lignes exportées en double | 24 lignes (environ 1 sur 60) |
+| Lignes vides au milieu du fichier | 6 |
+| Erreurs franches | 1 date impossible (31/02/2025), 1 montant « à voir », 1 client manquant, 1 TTC incohérent avec HT + TVA |
+
+La description de l'exemple est enregistrée dans les propriétés du fichier généré et reprise automatiquement dans
+l'onglet « Accueil » du reporting. Sur un vrai fichier, cet onglet indique simplement le nom du fichier source,
+l'onglet lu et les corrections faites.
 
 ## Le problème
 
@@ -34,7 +57,7 @@ C'est long, répétitif, et une erreur passe facilement inaperçue.
 
 | | Avant | Après |
 |---|---|---|
-| Fichier | `data/export_ventes_brut.xlsx` (1 483 lignes) | `exemples/reporting_exemple.xlsx` (7 onglets) |
+| Fichier | `data/export_ventes_brut.xlsx` (1 483 lignes) | `exemples/reporting_exemple.xlsx` (8 onglets) |
 | Dates | 5 formats différents, une date impossible (31/02) | une seule colonne de vraies dates Excel |
 | Montants | 736 valeurs stockées en texte | nombres, prêts pour les calculs |
 | Libellés | casse et espaces incohérents | 20 clients, 12 produits, 7 régions, sans variantes |
@@ -48,6 +71,7 @@ Le script **ne supprime rien en silence** : chaque ligne écartée ou à vérifi
 
 | Onglet | Contenu |
 |---|---|
+| Accueil | mode d'emploi : chiffres clés, rôle de chaque onglet (liens cliquables), origine des données, corrections faites, mise à jour, colonnes attendues |
 | Synthèse | indicateurs du mois (CA HT, évolution M-1 et N-1, cumul annuel vs N-1, panier moyen, factures, clients actifs, lignes à vérifier) et 3 graphiques |
 | CA mensuel | CA HT et nombre de factures par mois, évolutions M-1 / N-1 en vert / rouge, courbe |
 | Régions | CA HT, part du CA, nombre de clients par région, histogramme |
@@ -56,6 +80,11 @@ Le script **ne supprime rien en silence** : chaque ligne écartée ou à vérifi
 | Données nettoyées | toutes les lignes retenues, en tableau Excel filtrable, avec le n° de ligne source |
 
 Les graphiques sont des **graphiques Excel natifs** (modifiables dans Excel), pas des images.
+
+Mise en forme : une palette sobre (bleu marine, bleu clair, gris), onglets colorés par rôle (pilotage, analyse,
+contrôle), en-têtes figés et filtres sur chaque tableau, montants au format `1 234 €`, largeurs de colonnes
+ajustées, valeurs affichées sur les barres, lien « ← Retour à l'accueil » sur chaque onglet, mise en page
+paysage prête à imprimer.
 
 ![CA HT mensuel](docs/img/ca_mensuel.png)
 
@@ -83,7 +112,8 @@ python report.py export.xlsx -o reporting.xlsx --societe "Ma PME"   # nom affich
 Autres scripts :
 
 ```bash
-python generate_sample.py      # régénère le fichier d'exemple fictif
+python generate_sample.py      # régénère le fichier d'exemple fictif (graine 42)
+python report.py data/export_ventes_brut.xlsx -o exemples/reporting_exemple.xlsx   # régénère l'exemple
 python make_screenshots.py     # régénère les images de ce README
 pytest                         # lance les tests (nettoyage, agrégats, bout en bout)
 ```
@@ -106,10 +136,32 @@ La macro crée deux onglets : « Données nettoyées » (tableau Excel, lignes �
 colonne « Anomalie ») et « TCD ». Elle est plus simple que la version Python : pas de synthèse KPI ni de
 graphiques, et l'harmonisation de la casse retient la première graphie en casse mixte rencontrée.
 
+## Adapter à vos données
+
+L'export doit être un fichier `.xlsx` avec une ligne d'en-têtes puis une ligne par vente (ou par ligne de
+facture). L'ordre des colonnes est libre, les colonnes en plus sont ignorées, et les intitulés sont reconnus sans
+tenir compte de la casse ni des accents.
+
+| Colonne | Obligatoire | Intitulés reconnus | Exemple |
+|---|---|---|---|
+| Date | oui | date, date commande, date facture, date de vente | `15/03/2025`, `2025-03-15` ou vraie date |
+| N° facture | oui | n° facture, no facture, numero facture, facture | `F24001` |
+| Client | oui | client, raison sociale, nom client | `Boulangerie Martin` |
+| Produit | oui | produit, article, designation, libelle article | `Ramette papier A4` |
+| Région | oui | region, zone, secteur | `Bretagne` |
+| Quantité | oui | quantite, qte, qty | `3` |
+| Montant HT | oui | montant ht, total ht, ca ht | `1 234,50 €` ou `1234.5` |
+| Commercial | non | commercial, vendeur, representant | `Sophie Laurent` |
+| TVA | non | tva, montant tva | `246,90` |
+| Montant TTC | non (sert au contrôle HT + TVA = TTC) | montant ttc, total ttc | `1 481,40` |
+
+Si une colonne obligatoire manque, le script s'arrête avec un message qui la nomme. Pour un intitulé différent
+(« Total HT net », « Libellé »…), il suffit de l'ajouter dans `COLUMNS` (`reporting/cleaning.py`). Cette même
+liste figure dans l'onglet « Accueil » du classeur produit.
+
 ## Ce qui est personnalisable
 
-- **Noms de colonnes** : chaque logiciel a ses intitulés (« Raison sociale », « Total HT », « Désignation »…).
-  Ils se déclarent dans `COLUMNS` (`reporting/cleaning.py`) ou dans les constantes `COL_…` du module VBA.
+- **Noms de colonnes** : voir ci-dessus ; côté VBA, dans les constantes `COL_…` du module.
 - **Règles de nettoyage** : formats de date acceptés, tolérance sur le contrôle HT + TVA = TTC,
   traitement des lignes sans client.
 - **Indicateurs et tableaux** : marge, CA par commercial, par famille de produits, objectifs vs réalisé,
@@ -141,11 +193,6 @@ make_screenshots.py       images du README
 vba/ReportingVentes.bas   équivalent VBA (nettoyage + tableau croisé)
 tests/                    tests pytest
 ```
-
-## Données
-
-Toutes les données de ce dépôt sont **fictives**, générées par `generate_sample.py` : les noms de clients,
-produits et commerciaux sont inventés. Aucune donnée client réelle n'est utilisée.
 
 ## Licence
 

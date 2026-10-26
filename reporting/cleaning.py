@@ -31,7 +31,8 @@ COLUMNS = {
     "tva": ["tva", "montant tva"],
     "montant_ttc": ["montant ttc", "total ttc"],
 }
-REQUIRED = ["date", "client", "produit", "montant_ht"]
+REQUIRED = ["date", "client", "produit", "montant_ht"]          # indispensables au nettoyage
+REPORT_REQUIRED = REQUIRED + ["facture", "region", "quantite"]  # indispensables au reporting complet
 TEXT_COLUMNS = ["facture", "client", "produit", "region", "commercial"]
 AMOUNT_COLUMNS = ["montant_ht", "tva", "montant_ttc"]
 DATE_FORMATS = ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d-%m-%y", "%d.%m.%Y", "%d/%m/%y", "%Y/%m/%d"]

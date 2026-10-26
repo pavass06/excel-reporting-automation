@@ -114,6 +114,10 @@ def synthese_png(df, q):
     style(ax2)
     ax2.grid(axis="y", visible=False)
     ax2.grid(axis="x", color="#E5E5E5")
+    for bar in ax2.patches:  # valeurs au bout des barres, comme dans Excel
+        ax2.text(bar.get_width(), bar.get_y() + bar.get_height() / 2, " " + fmt_eur(bar.get_width()),
+                 va="center", fontsize=8, color=GREY)
+    ax2.set_xlim(0, max(b.get_width() for b in ax2.patches) * 1.25)
     ax3 = fig.add_axes([0.66, 0.05, 0.30, 0.27])
     ax3.barh(top["client"], top["ca_ht"], color=PRIMARY)
     ax3.invert_yaxis()
@@ -122,6 +126,10 @@ def synthese_png(df, q):
     style(ax3)
     ax3.grid(axis="y", visible=False)
     ax3.grid(axis="x", color="#E5E5E5")
+    for bar in ax3.patches:  # valeurs au bout des barres, comme dans Excel
+        ax3.text(bar.get_width(), bar.get_y() + bar.get_height() / 2, " " + fmt_eur(bar.get_width()),
+                 va="center", fontsize=8, color=GREY)
+    ax3.set_xlim(0, max(b.get_width() for b in ax3.patches) * 1.25)
     fig.savefig(OUT / "apercu_synthese.png")
     plt.close(fig)
 

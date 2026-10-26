@@ -128,8 +128,26 @@ HEADERS = ["Date", "N° facture", "Client", "Produit", "Région", "Commercial",
            "Quantité", "Montant HT", "TVA", "Montant TTC"]
 
 
-def write_xlsx(rows, path: Path) -> None:
+def description(seed: int) -> str:
+    """Texte placé dans les propriétés du fichier, repris dans l'onglet Accueil du reporting."""
+    return (
+        f"Données FICTIVES générées par generate_sample.py (graine aléatoire {seed}) : "
+        f"{len(CLIENTS)} clients, {len(PRODUITS)} produits, {len(REGIONS)} régions et "
+        f"{len(COMMERCIAUX)} commerciaux inventés, ventes des jours ouvrés de janvier 2024 à "
+        "septembre 2026. Défauts introduits volontairement pour démontrer le nettoyage : "
+        "dates sous 5 formats (vraie date Excel, JJ/MM/AAAA, AAAA-MM-JJ, JJ-MM-AA, JJ.MM.AAAA), "
+        "environ un quart des montants HT et TVA saisis en texte (« 1 234,50 € »), libellés en "
+        "majuscules ou minuscules et espaces parasites, environ une ligne sur 60 exportée en double, "
+        "6 lignes vides, et 4 erreurs franches (date impossible 31/02/2025, montant « à voir », "
+        "client manquant, TTC incohérent avec HT + TVA)."
+    )
+
+
+def write_xlsx(rows, path: Path, seed: int = None) -> None:
     wb = Workbook()
+    if seed is not None:
+        wb.properties.title = "Export de ventes fictif (démonstration)"
+        wb.properties.description = description(seed)
     ws = wb.active
     ws.title = "Export"
     ws.append(HEADERS)
@@ -148,7 +166,7 @@ def main(argv=None):
     p.add_argument("--seed", type=int, default=42)
     a = p.parse_args(argv)
     rows = build_rows(a.seed)
-    write_xlsx(rows, Path(a.output))
+    write_xlsx(rows, Path(a.output), seed=a.seed)
     print(f"{len(rows)} lignes écrites dans {a.output}")
 
 
